@@ -1,7 +1,11 @@
 package com.example.showimagesapp
 
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -10,6 +14,11 @@ import com.example.showimagesapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private val getContent =
+        registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
+            showImage(bitmap)
+        }
+
     private val imageUrls = listOf(
         "https://www.gstatic.com/webp/gallery/1.jpg",
         "https://www.gstatic.com/webp/gallery/2.jpg",
@@ -78,11 +87,15 @@ class MainActivity : AppCompatActivity() {
         binding.btnUpdateImage.setOnClickListener {
             showImage()
         }
+
+        binding.btnSelectImage.setOnClickListener {
+            getContent.launch(null)
+        }
     }
 
-    private fun showImage() {
+    private fun showImage(image: Any? = null) {
         Glide.with(this)
-            .load(imageUrls.random())
+            .load(image ?: imageUrls.random())
             .centerCrop()
             .error(R.drawable.ic_error)
             .placeholder(R.drawable.progress_animation)
