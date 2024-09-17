@@ -1,22 +1,30 @@
 package com.example.showimagesapp
 
-import android.graphics.Bitmap
-import android.net.Uri
+import android.Manifest.permission.READ_MEDIA_IMAGES
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 import com.example.showimagesapp.databinding.ActivityMainBinding
+import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            onPermissionResult(isGranted)
+        }
+
     private val getContent =
-        registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-            showImage(bitmap)
+        registerForActivityResult(ActivityResultContracts.GetContent()) { image ->
+            showImage(image)
         }
 
     private val imageUrls = listOf(
@@ -89,8 +97,57 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnSelectImage.setOnClickListener {
-            getContent.launch(null)
+            selectImage()
         }
+    }
+
+    private fun selectImage() {
+        when {
+            // Caso permissão já tenha sido concedida, executa ação
+            ContextCompat.checkSelfPermission(
+                this,
+                READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                getContent.launch("image/*")
+            }
+
+            // Caso permissão tenha sido negada uma vez, exibe explicação e possibilita autorizar
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                READ_MEDIA_IMAGES
+            ) -> {
+                showPermissionExplanation(requestAgain = true)
+            }
+
+            // Caso contrário solicita permissão
+            else -> {
+                requestPermissionLauncher.launch(READ_MEDIA_IMAGES)
+            }
+        }
+    }
+
+    private fun onPermissionResult(isGranted: Boolean) {
+        if (isGranted) {
+            // Caso permissão tenha sido concedida acessa recurso
+            getContent.launch("image/*")
+        } else {
+            // Caso contrário exibe mensagem explicando necessidade da permissão
+            showPermissionExplanation(requestAgain = false)
+        }
+    }
+
+    private fun showPermissionExplanation(requestAgain: Boolean) {
+        val snackbar = Snackbar.make(
+            findViewById(android.R.id.content),
+            "Precisamos da sua permissão para selecionar uma imagem da galeria",
+            Snackbar.LENGTH_LONG
+        )
+        if (requestAgain) {
+            snackbar.setAction("Permitir") {
+                requestPermissionLauncher.launch(READ_MEDIA_IMAGES)
+            }
+        }
+        snackbar.show()
     }
 
     private fun showImage(image: Any? = null) {
